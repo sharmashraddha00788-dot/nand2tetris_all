@@ -1,0 +1,63 @@
+CHIP ALU {
+    IN
+        x[16], y[16],
+        zx,
+        nx,
+        zy,
+        ny,
+        f,
+        no;
+
+    OUT
+        out[16],
+        zr,
+        ng;
+
+    PARTS:
+
+    // Zero x
+    Mux16(a=x, b=false, sel=zx, out=xZero);
+
+    // Negate x
+    Not16(in=xZero, out=notX);
+    Mux16(a=xZero, b=notX, sel=nx, out=xFinal);
+
+    // Zero y
+    Mux16(a=y, b=false, sel=zy, out=yZero);
+
+    // Negate y
+    Not16(in=yZero, out=notY);
+    Mux16(a=yZero, b=notY, sel=ny, out=yFinal);
+
+    // x & y
+    And16(a=xFinal, b=yFinal, out=andResult);
+
+    // x + y
+    Add16(a=xFinal, b=yFinal, out=addResult);
+
+    // Select function
+    Mux16(a=andResult, b=addResult, sel=f, out=functionResult);
+
+    // Negate output and split it for zr/ng
+    Not16(in=functionResult, out=notResult);
+
+    Mux16(
+        a=functionResult,
+        b=notResult,
+        sel=no,
+        out[0..7]=outLow,
+        out[8..15]=outHigh,
+        out[15]=outSign,
+        out=out
+    );
+
+    // zr = 1 if output is zero
+    Or8Way(in=outLow, out=orLow);
+    Or8Way(in=outHigh, out=orHigh);
+    Or(a=orLow, b=orHigh, out=orResult);
+    Not(in=orResult, out=zr);
+
+    // ng = 1 if output is negative
+    And(a=outSign, b=true, out=ng);
+
+}
